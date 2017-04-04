@@ -35,9 +35,9 @@ Builder.load_string('''
 <MainLayout>
 	BoxLayout:
 		id: topbar
-		size_hint_y: 0.1
+		size_hint_y: 0.05
 		pos_hint_y: 0
-		padding_bottom: 5
+		padding_bottom: 10
 
 
 
@@ -283,6 +283,8 @@ class ScrollApp(App):
 		#self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
 		Window.bind(on_key_down=self._on_keyboard_down)
 
+		
+
 	def _keyboard_closed(self):
 		self._keyboard.unbind(on_key_down=self._on_keyboard_down)
 		self._keyboard = None
@@ -345,6 +347,7 @@ class ScrollApp(App):
 		self.add_labels_num_lines_screen()
 		self.add_tag_labels_num_lines_screen()
 
+
 	#functions for adding and removing lines of text from the screen
 
 	def remove_lines_screen(self):
@@ -358,11 +361,8 @@ class ScrollApp(App):
 		self.line_widgets = []
 
 	def add_line_label(self, line, label):
-		#if label:
 		self.line_widgets.append(ScrollableLabel(text = line, color = self.color_labeled))
 			
-		#else:
-		#	self.line_widgets.append(ScrollableLabel(text = line, color = self.color_unlabeled))
 
 		self.line_widgets[-1].last_color = self.line_widgets[-1].color
 
@@ -373,6 +373,11 @@ class ScrollApp(App):
 			self.add_line_label(self.lines[num], self.labels[num])
 
 	#adding and removing tag labels
+
+	def add_tag_label_at_index(self,label):
+		print self.selected_line_widget
+		self.label_widgets[self.selected_line_widget-1].text = label
+
 
 	def add_tag_label(self, label):
 		self.label_widgets.append(ScrollableLabel(text = label, color = [1,1,1,1]))
@@ -404,10 +409,19 @@ class ScrollApp(App):
 			print self.selected_line_widget
 			print self.lines[self.current_index-self.num_lines_screen+self.selected_line_widget-1]
 			print self.labels[self.current_index-self.num_lines_screen+self.selected_line_widget-1]
+
 			self.labels[self.current_index-self.num_lines_screen+self.selected_line_widget-1] = self.tag_key_pairs[tagkey]
 			self.line_widgets[self.selected_line_widget-1].last_color  = self.color_labeled
+
+			self.add_tag_label_at_index(self.tag_key_pairs[tagkey])
+
 		except:
 			return
+
+	def update_tag_key_pairs(self):
+		if self.tag_key_pairs:
+			tagstring = ' '.join([key +': '+ val for key, val in self.tag_key_pairs.items()])
+			self.tag_display.text = tagstring
 
 
 	#navigation functions
@@ -460,6 +474,7 @@ class ScrollApp(App):
 		print keyname
 		print tagname
 		self.tag_key_pairs[keyname] = tagname
+		self.update_tag_key_pairs()
 		self.dismiss_popup()
 
 	#tag creation
@@ -479,6 +494,7 @@ class ScrollApp(App):
 			for line in readin:
 				self.add_tag(line[0], line[1])
 		self.dismiss_popup()
+		self.update_tag_key_pairs()
 
 	#exporting tag bindings and saving csv
 	def show_export_tag_bindings(self):
@@ -514,21 +530,23 @@ class ScrollApp(App):
 	def build(self):
 		self.layout = MainLayout(orientation = "vertical")
 
-		print self.layout.ids
-
 
 
 		
 		dropdown = MainMenu(load = self.show_load, load_tags = self.show_load_bind_tag_file, jump_untagged = self.jump_to_last_untagged, change_lines_page = self.show_lines_page_popup, export_tags = self.show_export_tag_bindings, save = self.save, add_tag = self.show_tag_bind)
-		mainbutton = Button(text='Menu', size=(.25, .1))
+		mainbutton = Button(text='Menu', size_hint_x=0.2)
+
 		mainbutton.bind(on_release=dropdown.open)
 
+		self.tag_display = Label(text="", size_hint_x = 0.8)
 
-		#menu_bar = AnchorLayout(anchor_x='left', anchor_y='top')
 
-		#menu_bar.add_widget(mainbutton)
+
 
 		self.layout.ids.topbar.add_widget(mainbutton)
+		self.layout.ids.topbar.add_widget(self.tag_display)
+
+		self.update_tag_key_pairs()
 
 
 		return self.layout

@@ -107,6 +107,12 @@ Builder.load_string('''
 		height: self.texture_size[1]
 		on_release: root.change_lines_page()
 
+	Button:
+		text: 'Add Keys to Tags'
+		size_hint_y: None
+		height: self.texture_size[1]
+		on_release: root.add_keys_from_tags()
+
 
 <LoadDialog>:
     BoxLayout:
@@ -183,8 +189,7 @@ Builder.load_string('''
 	BoxLayout:
 		spacing: 10
 		orientation: "vertical"
-		size: root.size
-		pos: root.pos
+
 		Label:
 			text: "Tag Name:"
 		TextInput:
@@ -211,10 +216,60 @@ Builder.load_string('''
         		on_release: root.cancel()
 
 
+
+<AssignTagFromTaggedDialogue>
+	dialogue_layout: key_items
+	BoxLayout:
+		size: root.size
+		pos: root.pos
+		orientation: "vertical"
+
+		BoxLayout:
+			id: key_items
+			spacing: 10
+			orientation: "vertical"
+
+		BoxLayout:
+			size_hint_y: .05
+			Button:
+				text: "OK"
+				on_release: root.ok([(key.ids['tag_name'].text, key.ids['keyname'].text)  for key in key_items.children])
+			Button:
+				text: "Cancel"
+				on_release: root.cancel()
+
+
+
+
+<AssignTagFromTagged>
+	tag_name: tag_name
+	keyname: keyname
+	BoxLayout:
+		spacing: 10
+		orientation: "horizontal"
+
+		Label:
+			id: tag_name
+			text: root.charname
+
+		TextInput:
+			id: keyname
+			multiline: False
+			font_size: 12
+
+
 ''')
 
 class MainLayout(BoxLayout):
 	pass
+
+class AssignTagFromTaggedDialogue(BoxLayout):
+	ok = ObjectProperty(None)
+	cancel = ObjectProperty(None)
+
+
+class AssignTagFromTagged(BoxLayout):
+	charname = StringProperty('')
 
 
 class AddTagDialog(FloatLayout):
@@ -250,6 +305,7 @@ class MainMenu(DropDown):
 	jump_untagged = ObjectProperty(None)
 	change_lines_page = ObjectProperty(None)
 	export_tags = ObjectProperty(None)
+	add_keys_from_tags = ObjectProperty(None)
 
 
 class ScrollApp(App):
@@ -465,10 +521,26 @@ class ScrollApp(App):
 		self._popup = Popup(title="Lines per page", content = content, size_hint=(0.4,0.4))
 		self._popup.open()
 
+
+	#tag creation/binding from currently open CSV
 	def show_tag_bind(self):
 		content = AddTagDialog(cancel = self.dismiss_popup, ok = self.add_tag)
 		self._popup = Popup(title="Bind new tag", content = content, size_hint = (0.4,0.4))
 		self._popup.open()
+
+	def show_tag_bind_from_csv(self):
+		label_set = set([label for label in self.labels if label != ''])
+		if label_set: #if a csv is actually loaded, and there are at least some labels present
+			print label_set
+			assignees = [AssignTagFromTagged(charname = label) for label in label_set]
+			content = AssignTagFromTaggedDialogue(cancel=self.dismiss_popup, ok = self.add_keys_from_labeled)
+			print content.dialogue_layout
+			for assign in assignees:
+				content.dialogue_layout.add_widget(assign)
+
+			self._popup = Popup(title="Assign tag keys", content = content, size_hint = (0.98,0.98))
+			self._popup.open()
+							
 
 	def add_tag(self, keyname, tagname):
 		print keyname
@@ -477,8 +549,10 @@ class ScrollApp(App):
 		self.update_tag_key_pairs()
 		self.dismiss_popup()
 
-	#tag creation
 
+	def add_keys_from_labeled(self, tag_key_pairs):
+		print tag_key_pairs
+		self.dismiss_popup()
 
 
 	#loading tag bindings
@@ -533,7 +607,7 @@ class ScrollApp(App):
 
 
 		
-		dropdown = MainMenu(load = self.show_load, load_tags = self.show_load_bind_tag_file, jump_untagged = self.jump_to_last_untagged, change_lines_page = self.show_lines_page_popup, export_tags = self.show_export_tag_bindings, save = self.save, add_tag = self.show_tag_bind)
+		dropdown = MainMenu(load = self.show_load, load_tags = self.show_load_bind_tag_file, jump_untagged = self.jump_to_last_untagged, change_lines_page = self.show_lines_page_popup, export_tags = self.show_export_tag_bindings, save = self.save, add_tag = self.show_tag_bind, add_keys_from_tags = self.show_tag_bind_from_csv)
 		mainbutton = Button(text='Menu', size_hint_x=0.2)
 
 		mainbutton.bind(on_release=dropdown.open)

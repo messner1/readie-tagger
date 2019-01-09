@@ -187,6 +187,7 @@ Builder.load_string('''
 <AddTagDialog>
 	text_input: tagname
 	BoxLayout:
+		pos: root.pos
 		spacing: 10
 		orientation: "vertical"
 
@@ -315,8 +316,7 @@ class ScrollApp(App):
 	def __init__(self, **kwargs):
 		super(ScrollApp, self).__init__(**kwargs)
 
-		self.tag_key_pairs = {}
-
+		
 		self.color_labeled = [.93,.14,.14,1]
 		self.color_unlabeled = [1,1,1,1]
 		self.color_selected = [.93,.80,.14,1]
@@ -333,7 +333,7 @@ class ScrollApp(App):
 		self.loaded_filename = ""
 
 		
-
+		self.tag_key_pairs = dict(zip(list(string.lowercase), ['' for char in list(string.lowercase)]))
 		self.key_lookup = dict(zip(range(97,123), list(string.lowercase)))
 
 		#self._keyboard = Window.request_keyboard(self._keyboard_closed, self)
@@ -346,6 +346,8 @@ class ScrollApp(App):
 		self._keyboard = None
 
 	def _on_keyboard_down(self, keyboard, keycode, text, modifiers, what):
+
+
 
 
 		if keycode == 274: #down
@@ -364,8 +366,12 @@ class ScrollApp(App):
 			self.add_tag_labels_num_lines_screen()
 		#49-57
 
-		elif keycode in range(49,58):
+		elif keycode in range(49,58): #numkeys
 			self.select_lineno(keycode-48) #blah
+		elif keycode == 27: #esc, save and quit
+			self.save()
+			self.stop()
+
 		elif keycode in self.key_lookup.keys():
 			self.tag_line(self.key_lookup[keycode])
 
@@ -448,8 +454,8 @@ class ScrollApp(App):
 	#functions for tagging text
 
 	def select_lineno(self, linekey):
-		print self.selected_line_widget
-		print len(self.line_widgets)
+		
+
 		if int(linekey) <= len(self.line_widgets):
 			if self.selected_line_widget: #deselect any previously selected line
 				self.line_widgets[self.selected_line_widget - 1].color = self.line_widgets[self.selected_line_widget - 1].last_color #make as last color thing
@@ -458,25 +464,29 @@ class ScrollApp(App):
 			self.line_widgets[self.selected_line_widget - 1].last_color = self.line_widgets[self.selected_line_widget - 1].color
 			self.line_widgets[self.selected_line_widget - 1].color = self.color_selected
 
+		print self.selected_line_widget
+
 	def tag_line(self, tagkey):
-		try:
-			print self.tag_key_pairs[tagkey]
+		
+		if self.tag_key_pairs[tagkey] != '':
+			#print self.tag_key_pairs[tagkey]
 			print self.current_index
 			print self.selected_line_widget
-			print self.lines[self.current_index-self.num_lines_screen+self.selected_line_widget-1]
-			print self.labels[self.current_index-self.num_lines_screen+self.selected_line_widget-1]
+			#print self.lines[self.current_index-self.num_lines_screen+self.selected_line_widget-1]
+			#print self.labels[self.current_index-self.num_lines_screen+self.selected_line_widget-1]
 
-			self.labels[self.current_index-self.num_lines_screen+self.selected_line_widget-1] = self.tag_key_pairs[tagkey]
+			adjusted_index = max(0, self.current_index-self.num_lines_screen)
+
+			self.labels[adjusted_index+self.selected_line_widget-1] = self.tag_key_pairs[tagkey]
 			self.line_widgets[self.selected_line_widget-1].last_color  = self.color_labeled
 
 			self.add_tag_label_at_index(self.tag_key_pairs[tagkey])
 
-		except:
-			return
+
 
 	def update_tag_key_pairs(self):
 		if self.tag_key_pairs:
-			tagstring = ' '.join([key +': '+ val for key, val in self.tag_key_pairs.items()])
+			tagstring = ' '.join([key +': '+ val if val is not '' else '' for key, val in self.tag_key_pairs.items()])
 			self.tag_display.text = tagstring
 
 
@@ -543,15 +553,15 @@ class ScrollApp(App):
 							
 
 	def add_tag(self, keyname, tagname):
-		print keyname
-		print tagname
 		self.tag_key_pairs[keyname] = tagname
 		self.update_tag_key_pairs()
 		self.dismiss_popup()
 
 
-	def add_keys_from_labeled(self, tag_key_pairs):
-		print tag_key_pairs
+	def add_keys_from_labeled(self, to_associates):
+		for to_associate in to_associates:
+			self.tag_key_pairs[to_associate[1]] = to_associate[0]
+		self.update_tag_key_pairs()
 		self.dismiss_popup()
 
 
@@ -591,11 +601,13 @@ class ScrollApp(App):
 
 
 	def save(self):
-		print self.loaded_path, self.loaded_filename
-		with open(os.path.join(self.loaded_path, self.loaded_filename[0]), 'w') as stream:
-			writeout = csv.writer(stream, delimiter='\t')
-			for pair in zip(self.lines, self.labels):
-				writeout.writerow([pair[0], pair[1]])
+		try:
+			with open(os.path.join(self.loaded_path, self.loaded_filename[0]), 'wb') as stream:
+				writeout = csv.writer(stream, delimiter='\t')
+				for pair in zip(self.lines, self.labels):
+					writeout.writerow([pair[0], pair[1]])
+		except:
+			pass
 
 
 
